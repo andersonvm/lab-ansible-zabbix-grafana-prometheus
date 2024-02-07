@@ -1,0 +1,32 @@
+---
+- name: Instalar Zabbix Agent
+  hosts: all  # Pode ser substituído pelos nomes das máquinas específicas (centos, debian, ubuntu) se desejar aplicar apenas em uma máquina por vez
+
+  become: true  # Permite a execução de comandos como superusuário
+
+  tasks:
+    - name: Instalar Zabbix Agent
+      block:
+        - name: CentOS - Instalar Zabbix Agent
+          when: ansible_distribution == 'CentOS'
+          yum:
+            name: zabbix-agent
+            state: present
+
+        - name: Debian - Instalar Zabbix Agent
+          when: ansible_distribution == 'Debian'
+          apt:
+            name: zabbix-agent
+            state: present
+
+        - name: Ubuntu - Instalar Zabbix Agent
+          when: ansible_distribution == 'Ubuntu'
+          apt:
+            name: zabbix-agent
+            state: present
+
+    - name: Iniciar e habililtar Zabbix Agent service
+      service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
