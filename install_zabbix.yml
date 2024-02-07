@@ -1,0 +1,72 @@
+---
+- name: Instalar Zabbix Server on CentOS
+  hosts: centos  # Nome do host definido no Vagrantfile para a máquina CentOS
+
+  become: true  # Permite a execução de comandos como superusuário
+
+  tasks:
+    - name: Atualizar pacotes
+      yum:
+        name: '*'
+        state: latest
+
+    - name: Instalar pre requisitos
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - epel-release
+        - httpd
+        - mariadb-server
+        - mariadb
+        - mariadb-devel
+        - mariadb-server
+        - zabbix-server-mysql
+        - zabbix-web-mysql
+        - zabbix-agent
+
+    - name: Iniciar e habilitar MariaDB service
+      service:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Configurar o banco de dados inicial do Zabbix
+      command: mysql -uroot -e "create database zabbix character set utf8 collate utf8_bin;"
+      ignore_errors: yes
+
+    - name: Importar Zabbix SQL schema
+      command: zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uroot zabbix
+      args:
+        creates: /etc/zabbix/zabbix_server.conf
+      ignore_errors: yes
+
+    - name: Configurar Zabbix server
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      with_items:
+        - { regexp: '^DBHost=.*', line: 'DBHost=localhost' }
+        - { regexp: '^DBName=.*', line: 'DBName=zabbix' }
+        - { regexp: '^DBUser=.*', line: 'DBUser=zabbix' }
+        - { regexp: '^DBPassword=.*', line: 'DBPassword=zabbix' }
+
+    - name: Iniciar e habilitar Zabbix server service
+      service:
+        name: zabbix-server
+        state: started
+        enabled: yes
+
+    - name: Iniciar e habilitar Apache service
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Conferir se o Zabbix agent está iniciado e habilitado
+      service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
